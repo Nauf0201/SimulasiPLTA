@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simulasi Perubahan Energi Angin ke Listrik</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(to bottom, #87CEEB, #E0F6FF);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+      color: #333;
+    }
+    h1 {
+      margin-bottom: 10px;
+      color: #1e3d59;
+      text-align: center;
+    }
+    p.subtitle {
+      margin-bottom: 20px;
+      color: #435b71;
+      text-align: center;
+    }
+    .container {
+      background: rgba(255, 255, 255, 0.9);
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+      width: 100%;
+      max-width: 600px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    
+    /* Visualisasi Kincir & Lampu */
+    .simulation-area {
+      position: relative;
+      width: 100%;
+      height: 260px;
+      background: linear-gradient(to bottom, #b3e5fc 70%, #81c784 70%);
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+    }
+    
+    /* Tiang Kincir */
+    .pole {
+      width: 12px;
+      height: 120px;
+      background-color: #78909c;
+      position: absolute;
+      bottom: 20px;
+      z-index: 1;
+    }
+    
+    /* Baling-baling */
+    .rotor {
+      position: absolute;
+      bottom: 130px;
+      width: 0;
+      height: 0;
+      z-index: 2;
+    }
+    .blade {
+      position: absolute;
+      width: 8px;
+      height: 70px;
+      background: #eceff1;
+      border: 1px solid #b0bec5;
+      border-radius: 50% 50% 0 0;
+      transform-origin: bottom center;
+      left: -4px;
+      bottom: 0;
+    }
+    .blade:nth-child(1) { transform: rotate(0deg); }
+    .blade:nth-child(2) { transform: rotate(120deg); }
+    .blade:nth-child(3) { transform: rotate(240deg); }
+    
+    .center-cap {
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      background: #455a64;
+      border-radius: 50%;
+      left: -8px;
+      bottom: -8px;
+      z-index: 3;
+    }
+
+    /* Animasi Putaran Baling-baling */
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .spinning {
+      animation: spin linear infinite;
+    }
+
+    /* Visualisasi Lampu */
+    .lightbulb-container {
+      position: absolute;
+      right: 40px;
+      bottom: 30px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      z-index: 2;
+    }
+    .bulb {
+      width: 40px;
+      height: 40px;
+      background-color: #555;
+      border-radius: 50%;
+      transition: background-color 0.2s, box-shadow 0.2s;
+    }
+    .wire {
+      position: absolute;
+      bottom: 0;
+      right: 60px;
+      width: 150px;
+      height: 2px;
+      border-bottom: 2px dashed #37474f;
+      z-index: 1;
+    }
+
+    /* Kontrol */
+    .controls {
+      width: 100%;
+      margin-bottom: 20px;
+    }
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    label {
+      font-weight: bold;
+      color: #1e3d59;
+    }
+    input[type=range] {
+      width: 100%;
+      cursor: pointer;
+    }
+
+    /* Dashboard Informasi */
+    .dashboard {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      background: #f0f4f8;
+      padding: 15px;
+      border-radius: 8px;
+    }
+    .card {
+      background: #fff;
+      padding: 10px;
+      border-radius: 6px;
+      border-left: 4px solid #17a2b8;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .card h3 {
+      font-size: 0.85rem;
+      color: #6c757d;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .card p {
+      font-size: 1.1rem;
+      font-weight: bold;
+      color: #212529;
+    }
+
+    /* PERBAIKAN: Selector digabung tanpa spasi (.card.fullspan) */
+    .card.fullspan {
+      grid-column: span 2;
+      border-left: 4px solid #f39c12;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Simulasi Energi Angin ke Listrik</h1>
+  <p class="subtitle">Ubah Energi Kinetik (Angin) &rarr; Energi Mekanik (Kincir) &rarr; Energi Listrik (Generator)</p>
+
+  <div class="container">
+    <div class="simulation-area">
+      <div class="pole"></div>
+      <div class="rotor" id="rotor">
+        <div class="blade"></div>
+        <div class="blade"></div>
+        <div class="blade"></div>
+        <div class="center-cap"></div>
+      </div>
+
+      <div class="wire"></div>
+      <div class="lightbulb-container">
+        <div class="bulb" id="bulb"></div>
+        <span style="font-size: 0.8rem; margin-top: 4px; font-weight: bold;">Beban Listrik</span>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="control-group">
+        <label for="windSpeed">Kecepatan Angin: <span id="windValue">0</span> m/s</label>
+        <input type="range" id="windSpeed" min="0" max="25" value="0" step="0.5">
+      </div>
+    </div>
+
+    <div class="dashboard">
+      <div class="card">
+        <h3>Kecepatan Kincir</h3>
+        <p><span id="rpm">0</span> RPM</p>
+      </div>
+      <div class="card">
+        <h3>Daya Listrik (P)</h3>
+        <p><span id="power">0</span> Watt</p>
+      </div>
+      <div class="card">
+        <h3>Tegangan (V)</h3>
+        <p><span id="voltage">0</span> Volt</p>
+      </div>
+      <div class="card">
+        <h3>Total Energi (E)</h3>
+        <p><span id="energy">0</span> Joule</p>
+      </div>
+      
+      <div class="card fullspan">
+        <h3>Rumus Konversi Angin ke Daya Listrik</h3>
+        <p style="margin-top: 6px; font-family: 'Courier New', Courier, monospace; font-size: 1rem;">
+          P<sub>listrik</sub> = &frac12; &middot; &rho; &middot; A &middot; v<sup>3</sup> &middot; C<sub>p</sub> &middot; &eta;<sub>m</sub> &middot; &eta;<sub>g</sub>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Elemen DOM
+    const windSlider = document.getElementById('windSpeed');
+    const windValueEl = document.getElementById('windValue');
+    const rotor = document.getElementById('rotor');
+    const bulb = document.getElementById('bulb');
+    
+    const rpmEl = document.getElementById('rpm');
+    const powerEl = document.getElementById('power');
+    const voltageEl = document.getElementById('voltage');
+    const energyEl = document.getElementById('energy');
+
+    // Variabel kalkulasi
+    let totalEnergy = 0; // dalam Joule
+    let lastTime = performance.now();
+
+    // Fungsi pembaruan simulasi
+    function updateSimulation() {
+      const v = parseFloat(windSlider.value); // Kecepatan angin (m/s)
+      windValueEl.textContent = v.toFixed(1);
+
+      // 1. Hitung RPM kincir
+      const rpm = v * 12;
+      rpmEl.textContent = Math.round(rpm);
+
+      // 2. Kontrol Animasi Rotasi
+      if (v > 0) {
+        rotor.classList.add('spinning');
+        const duration = 60 / (rpm || 1);
+        rotor.style.animationDuration = `${duration}s`;
+      } else {
+        rotor.classList.remove('spinning');
+      }
+
+      // 3. Kalkulasi Daya Listrik
+      const airDensity = 1.225; // kg/m3
+      const sweptArea = 2.0;    // m2
+      const efficiency = 0.35;  // 35% efisiensi sistem
+      
+      let power = 0.5 * airDensity * sweptArea * Math.pow(v, 3) * efficiency;
+      powerEl.textContent = power.toFixed(1);
+
+      // 4. Hitung Estimasi Tegangan Listrik (Volt)
+      let voltage = Math.sqrt(power * 10);
+      voltageEl.textContent = voltage.toFixed(1);
+
+      // 5. Visualisasi Lampu
+      const maxPower = 300;
+      const brightness = Math.min(power / maxPower, 1);
+      
+      if (power > 0.5) {
+        bulb.style.backgroundColor = `rgba(255, 235, 59, ${Math.max(brightness, 0.3)})`;
+        bulb.style.boxShadow = `0 0 ${brightness * 35}px ${brightness * 15}px rgba(255, 235, 59, ${brightness})`;
+      } else {
+        bulb.style.backgroundColor = '#555';
+        bulb.style.boxShadow = 'none';
+      }
+    }
+
+    // Loop pembaruan akumulasi total energi
+    function accumulatorLoop(currentTime) {
+      const deltaTime = (currentTime - lastTime) / 1000;
+      lastTime = currentTime;
+
+      const currentPower = parseFloat(powerEl.textContent) || 0;
+      totalEnergy += currentPower * deltaTime;
+      energyEl.textContent = Math.round(totalEnergy);
+
+      requestAnimationFrame(accumulatorLoop);
+    }
+
+    // Event Listener
+    windSlider.addEventListener('input', updateSimulation);
+
+    // Inisialisasi awal
+    updateSimulation();
+    requestAnimationFrame(accumulatorLoop);
+  </script>
+</body>
+</html>
